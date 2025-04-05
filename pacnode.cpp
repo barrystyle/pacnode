@@ -126,7 +126,7 @@ int main()
             ++i;
         }
 
-        usleep(1000);
+        usleep(10000);
     }
 
     return 1;
