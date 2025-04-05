@@ -1,10 +1,14 @@
 #include <message.h>
 
+#include <iostream>
+#include <fstream>
 #include <functional>
 #include <thread>
 
 //pacnode
 //barrystyle 05042025
+
+std::vector<std::string> ips;
 
 void worker_thread(int thr_id, std::string peer_address, int peer_port)
 {
@@ -80,6 +84,20 @@ void worker_thread(int thr_id, std::string peer_address, int peer_port)
     close(sock);
 }
 
+void read_mnlist()
+{
+    int entries = 0;
+    std::ifstream file("mnlist.log");
+
+    std::string line;
+    while (std::getline(file, line)) {
+        ips.push_back(line);
+        ++entries;
+    };
+
+    printf("%d addresses loaded..\n", entries);
+}
+
 int max_thr = 4;
 
 int main()
@@ -87,8 +105,9 @@ int main()
     std::vector<std::thread> threads;
     
     int count = 0;
-    std::vector<std::string> ips = { "109.11.183.98" };
     int peer_port = 7112;
+
+    read_mnlist();
 
     while (true) {
 
