@@ -1,4 +1,5 @@
 #include <message.h>
+#include <simplelogger.h>
 
 #include <iostream>
 #include <fstream>
@@ -12,11 +13,14 @@ std::vector<std::string> ips;
 
 void worker_thread(int thr_id, std::string peer_address, int peer_port)
 {
-    const int timeout_secs = 1;
+    std::string peer_result;
+    const int timeout_secs = 2;
     char* peer_ip = (char*)peer_address.c_str();
 
     int sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock < 0) {
+        peer_result = peer_address + " error creating socket";
+        filelogger(peer_result);
         return;
     }
 
@@ -32,11 +36,11 @@ void worker_thread(int thr_id, std::string peer_address, int peer_port)
 
     int result = connect(sock, (sockaddr*)&addr, sizeof(addr));
     if (result < 0 && errno != EINPROGRESS) {
-        printf("offline\n");
+        peer_result = peer_address + " cant connect";
+        filelogger(peer_result);
         close(sock);
         return;
     }
-    printf("%s:%d ", peer_ip, peer_port);
 
     //timeout
     fd_set writefds;
@@ -49,7 +53,8 @@ void worker_thread(int thr_id, std::string peer_address, int peer_port)
 
     result = select(sock + 1, nullptr, &writefds, nullptr, &timeout);
     if (result <= 0) {
-        printf("offline\n");
+        peer_result = peer_address + " cant connect";
+        filelogger(peer_result);
         close(sock);
         return;
     }
@@ -68,7 +73,8 @@ void worker_thread(int thr_id, std::string peer_address, int peer_port)
 
     ssize_t sent = send(sock, message.data(), message.size(), 0);
     if (sent < 0) {
-        printf("offline\n");
+        peer_result = peer_address + " cant send";
+        filelogger(peer_result);
         close(sock);
         return;
     }
@@ -76,9 +82,11 @@ void worker_thread(int thr_id, std::string peer_address, int peer_port)
     uint8_t buffer[1024];
     ssize_t len = recv(sock, buffer, sizeof(buffer), 0);
     if (len > 0) {
-        printf("online\n");
+        peer_result = peer_address + " online";
+        filelogger(peer_result);
     } else {
-        printf("offline\n");
+        peer_result = peer_address + " offline";
+        filelogger(peer_result);
     }
 
     close(sock);
@@ -116,6 +124,7 @@ int main()
             threads.push_back(std::thread(std::bind(&worker_thread, std::ref(i), std::ref(ips[count]), std::ref(peer_port))));
             ++i;     //thread count
             ++count; //mn index
+            usleep(10000);
         }
 
         i=0;
@@ -124,9 +133,8 @@ int main()
                 threads[i].join();
             }
             ++i;
+            usleep(10000);
         }
-
-        usleep(10000);
     }
 
     return 1;
